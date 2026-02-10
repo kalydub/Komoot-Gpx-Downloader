@@ -1,0 +1,81 @@
+// Komoot GPX Downloader - Sans Doublons
+class KomootDownloader {
+  constructor() {
+    this.activities = new Map();
+    this.run();
+  }
+
+  async run() {
+    console.log('🚀 Recherche des activités...');
+    
+    const links = document.querySelectorAll('a[href*="/tour/"]');
+    
+    links.forEach(link => {
+      const match = link.href.match(/\/tour\/(\d+)/);
+      if (match) {
+        const tourId = match[1];
+        if (!this.activities.has(tourId)) {
+          const name = link.textContent.trim() || `Tour ${tourId}`;
+          this.activities.set(tourId, { id: tourId, name: name });
+        }
+      }
+    });
+    
+    const activitiesArray = Array.from(this.activities.values());
+    console.log(`✅ ${activitiesArray.length} activités trouvées!`);
+    
+    if (activitiesArray.length === 0) {
+      console.error('❌ Scrollez jusqu\'en bas!');
+      return;
+    }
+    
+    console.table(activitiesArray);
+    
+    if (!confirm(`Télécharger ${activitiesArray.length} activités GPX?`)) return;
+    
+    console.log('📥 Téléchargement...');
+    
+    for (let i = 0; i < activitiesArray.length; i++) {
+      const activity = activitiesArray[i];
+      try {
+        await this.downloadGPX(activity);
+        console.log(`✅ ${i + 1}/${activitiesArray.length} - ${activity.name}`);
+        await new Promise(r => setTimeout(r, 500));
+      } catch (error) {
+        console.error(`❌ ${activity.name}:`, error.message);
+      }
+    }
+    
+    console.log('🎉 Terminé!');
+  }
+
+  async downloadGPX(activity) {
+    const gpxUrl = `https://www.komoot.com/api/v007/tours/${activity.id}.gpx`;
+    const response = await fetch(gpxUrl, { credentials: 'include' });
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const gpxContent = await response.text();
+    
+    const safeName = activity.name
+      .replace(/[^a-zà-ÿ0-9\s-]/gi, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .toLowerCase()
+      .substring(0, 100);
+    
+    const filename = `${safeName}.gpx`;
+    
+    const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}
+
+new KomootDownloader();
