@@ -7,6 +7,6 @@ Scroll to the bottom to load all activities
 
 Open the console (F12 → Console tab)
 
-Copy and paste the script below
+Copy and paste the script
 
 Press Enter
